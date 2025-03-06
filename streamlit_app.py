@@ -2,7 +2,6 @@ import streamlit as st
 import google.generativeai as genai
 from langdetect import detect
 from textblob import TextBlob
-import nltk
 from fpdf import FPDF
 from io import BytesIO
 import concurrent.futures
@@ -23,12 +22,6 @@ import pandas as pd
 from flair.models import TextClassifier
 from flair.data import Sentence
 import asyncio
-
-# Download required NLTK data
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
-nltk.download('maxent_ne_chunker')
-nltk.download('words')
 
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
