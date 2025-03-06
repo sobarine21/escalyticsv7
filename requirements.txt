@@ -1,10 +1,11 @@
-streamlit 
+```pip requirements
+streamlit
 google-generativeai
-langdetect 
+langdetect
 textblob
 fpdf
 docx2txt
-pypdf2 
+pypdf2
 cryptography
 openpyxl
 pandas
@@ -12,4 +13,4 @@ matplotlib
 seaborn
 spacy
 flair
-python -m spacy download en_core_web_sm
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz
