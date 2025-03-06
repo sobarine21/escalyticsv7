@@ -19,7 +19,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-from flair.models import TextClassifier
+from flair.models import TextClassifier, SequenceTagger
 from flair.data import Sentence
 import asyncio
 
@@ -140,7 +140,10 @@ def get_ai_response(prompt, email_content):
         return ""
 
 def get_sentiment(email_content):
-    return TextBlob(email_content).sentiment.polarity
+    sentiment_model = TextClassifier.load('en-sentiment')
+    sentence = Sentence(email_content)
+    sentiment_model.predict(sentence)
+    return sentence.labels
 
 def get_readability(email_content):
     return round(TextBlob(email_content).sentiment.subjectivity * 10, 2)
@@ -241,8 +244,10 @@ def visualize_conflict_detection(conflict_detection):
     st.pyplot(plt)
 
 def perform_ner(email_content):
-    blob = TextBlob(email_content)
-    return blob.tags, blob.noun_phrases, blob.parse()
+    ner_model = SequenceTagger.load('ner')
+    sentence = Sentence(email_content)
+    ner_model.predict(sentence)
+    return sentence.to_dict(tag_type='ner')
 
 def perform_dependency_parsing(email_content):
     blob = TextBlob(email_content)
@@ -315,7 +320,7 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
                     bias_detection = future_bias_detection.result() if future_bias_detection else None
                     conflict_detection = future_conflict_detection.result() if future_conflict_detection else None
                     argument_mining = future_argument_mining.result() if future_argument_mining else None
-                    ner_tags, noun_phrases, dependency_tree = future_ner.result() if future_ner else (None, None, None)
+                    ner_results = future_ner.result() if future_ner else None
                     dependency_parsing = future_dependency_parsing.result() if future_dependency_parsing else None
                     personality_traits = future_personality_traits.result() if future_personality_traits else None
 
@@ -334,8 +339,7 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
                 if features["sentiment"]:
                     st.subheader("💬 Sentiment Analysis")
                     sentiment = get_sentiment(email_content)
-                    sentiment_label = "Positive" if sentiment > 0 else "Negative" if sentiment < 0 else "Neutral"
-                    st.write(f"**Sentiment:** {sentiment_label} (Polarity: {sentiment:.2f})")
+                    st.write(f"**Sentiment:** {sentiment}")
 
                 if tone:
                     st.subheader("🎭 Email Tone")
@@ -392,16 +396,13 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
                     st.write(argument_mining)
                     visualize_argument_mining(argument_mining)
 
-                if ner_tags or noun_phrases:
+                if ner_results:
                     st.subheader("🔍 Named Entity Recognition (NER)")
-                    st.write("Tags:")
-                    st.write(ner_tags)
-                    st.write("Noun Phrases:")
-                    st.write(noun_phrases)
+                    st.json(ner_results)
 
-                if dependency_tree:
+                if dependency_parsing:
                     st.subheader("🔗 Dependency Parsing")
-                    st.write(dependency_tree)
+                    st.write(dependency_parsing)
 
                 if personality_traits:
                     st.subheader("🧠 Inferred Personality Traits")
@@ -428,9 +429,8 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
                         "conflict_detection": conflict_detection,
                         "argument_mining": argument_mining,
                         "metadata": email_metadata,
-                        "ner_tags": ner_tags,
-                        "noun_phrases": noun_phrases,
-                        "dependency_tree": dependency_tree,
+                        "ner_results": ner_results,
+                        "dependency_parsing": dependency_parsing,
                         "personality_traits": personality_traits,
                     }
                     export_json = json.dumps(export_data, indent=4)
