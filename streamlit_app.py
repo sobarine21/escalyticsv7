@@ -23,6 +23,7 @@ import spacy
 from spacy import displacy
 from flair.models import TextClassifier
 from flair.data import Sentence
+import asyncio
 
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
@@ -156,7 +157,7 @@ def export_pdf(text):
 def analyze_phishing_links(email_content):
     phishing_keywords = ["login", "verify", "update account", "account suspended", "urgent action required", "click here"]
     phishing_links = []
-    urls = re.findall(r'(https?://\S+)', email_content)
+    urls = re.findall(r'(https?://\\S+)', email_content)
     for url in urls:
         for keyword in phishing_keywords:
             if keyword.lower() in url.lower():
@@ -165,9 +166,9 @@ def analyze_phishing_links(email_content):
 
 def detect_sensitive_information(email_content):
     sensitive_info_patterns = {
-        "phone_number": r"(\+?\d{1,2}\s?)?(\(?\d{3}\)?|\d{3})[\s\-]?\d{3}[\\s\-]?\d{4}",
-        "email_address": r"[\w\.-]+@[\w\.-]+\.\w+",
-        "credit_card": r"\b(?:\d[ -]*?){13,16}\b"
+        "phone_number": r"(\+?\\d{1,2}\\s?)?(\\(?\\d{3}\\)?|\\d{3})[\\s\\-]?\\d{3}[\\\\s\\-]?\\d{4}",
+        "email_address": r"[\\w\\.-]+@[\\w\\.-]+\\.\\w+",
+        "credit_card": r"\\b(?:\\d[ -]*?){13,16}\\b"
     }
     
     sensitive_data = {}
@@ -220,7 +221,7 @@ def extract_email_metadata(email_file):
         return f"Error extracting metadata: {e}"
 
 def visualize_argument_mining(argument_mining):
-    arguments = argument_mining.split("\n")
+    arguments = argument_mining.split("\\n")
     arguments = [arg for arg in arguments if arg.strip()]
     data = pd.DataFrame({"Argument": arguments})
     plt.figure(figsize=(10, 6))
@@ -231,7 +232,7 @@ def visualize_argument_mining(argument_mining):
     st.pyplot(plt)
 
 def visualize_conflict_detection(conflict_detection):
-    conflicts = conflict_detection.split("\n")
+    conflicts = conflict_detection.split("\\n")
     conflicts = [conflict for conflict in conflicts if conflict.strip()]
     data = pd.DataFrame({"Conflict": conflicts})
     plt.figure(figsize=(10, 6))
@@ -270,20 +271,20 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
         else:
             with st.spinner("⚡ Processing email insights..."):
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future_summary = executor.submit(get_ai_response, "Summarize this email concisely:\n\n", email_content) if features["highlights"] else None
-                    future_response = executor.submit(get_ai_response, "Generate a professional response to this email:\n\n", email_content) if features["response"] else None
-                    future_highlights = executor.submit(get_ai_response, "Highlight key points:\n\n", email_content) if features["highlights"] else None
-                    future_tone = executor.submit(get_ai_response, "Detect the tone of this email:\n\n", email_content) if features["tone"] else None
-                    future_tasks = executor.submit(get_ai_response, "List actionable tasks:\n\n", email_content) if features["task_extraction"] else None
-                    future_subject = executor.submit(get_ai_response, "Suggest a professional subject line:\n\n", email_content) if features["subject_recommendation"] else None
-                    future_clarity = executor.submit(get_ai_response, "Rate the clarity of this email:\n\n", email_content) if features["clarity"] else None
-                    future_complexity_reduction = executor.submit(get_ai_response, "Explain this email in the simplest way possible:\n\n", email_content) if features["complexity_reduction"] else None
+                    future_summary = executor.submit(get_ai_response, "Summarize this email concisely:\\n\\n", email_content) if features["highlights"] else None
+                    future_response = executor.submit(get_ai_response, "Generate a professional response to this email:\\n\\n", email_content) if features["response"] else None
+                    future_highlights = executor.submit(get_ai_response, "Highlight key points:\\n\\n", email_content) if features["highlights"] else None
+                    future_tone = executor.submit(get_ai_response, "Detect the tone of this email:\\n\\n", email_content) if features["tone"] else None
+                    future_tasks = executor.submit(get_ai_response, "List actionable tasks:\\n\\n", email_content) if features["task_extraction"] else None
+                    future_subject = executor.submit(get_ai_response, "Suggest a professional subject line:\\n\\n", email_content) if features["subject_recommendation"] else None
+                    future_clarity = executor.submit(get_ai_response, "Rate the clarity of this email:\\n\\n", email_content) if features["clarity"] else None
+                    future_complexity_reduction = executor.submit(get_ai_response, "Explain this email in the simplest way possible:\\n\\n", email_content) if features["complexity_reduction"] else None
 
-                    scenario_prompt = f"Generate a response for a {selected_scenario.lower()}:\n\n"
+                    scenario_prompt = f"Generate a response for a {selected_scenario.lower()}:\\n\\n"
                     future_scenario_response = executor.submit(get_ai_response, scenario_prompt, email_content) if features["scenario_responses"] else None
 
                     attachment_text = analyze_attachment(uploaded_file) if uploaded_file and features["attachment_analysis"] else None
-                    future_attachment_analysis = executor.submit(get_ai_response, "Analyze this attachment content:\n\n", attachment_text) if attachment_text else None
+                    future_attachment_analysis = executor.submit(get_ai_response, "Analyze this attachment content:\\n\\n", attachment_text) if attachment_text else None
 
                     phishing_links = analyze_phishing_links(email_content) if features["phishing_detection"] else []
 
@@ -291,9 +292,9 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
 
                     confidentiality = confidentiality_rating(email_content) if features["confidentiality_rating"] else 0
 
-                    future_bias_detection = executor.submit(get_ai_response, "Identify potential biases in this email:\n\n", email_content) if features["bias_detection"] else None
-                    future_conflict_detection = executor.submit(get_ai_response, "Detect conflicts in this email thread:\n\n", email_content) if features["conflict_detection"] else None
-                    future_argument_mining = executor.submit(get_ai_response, "Analyze the arguments presented in this email:\n\n", email_content) if features["argument_mining"] else None
+                    future_bias_detection = executor.submit(get_ai_response, "Identify potential biases in this email:\\n\\n", email_content) if features["bias_detection"] else None
+                    future_conflict_detection = executor.submit(get_ai_response, "Detect conflicts in this email thread:\\n\\n", email_content) if features["conflict_detection"] else None
+                    future_argument_mining = executor.submit(get_ai_response, "Analyze the arguments presented in this email:\\n\\n", email_content) if features["argument_mining"] else None
 
                     if features["metadata_extraction"] and uploaded_email_file:
                         email_metadata = extract_email_metadata(uploaded_email_file)
