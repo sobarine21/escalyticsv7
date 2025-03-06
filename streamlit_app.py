@@ -2,6 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 from langdetect import detect
 from textblob import TextBlob
+import nltk
 from fpdf import FPDF
 from io import BytesIO
 import concurrent.futures
@@ -19,11 +20,15 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-import spacy
-from spacy import displacy
 from flair.models import TextClassifier
 from flair.data import Sentence
 import asyncio
+
+# Download required NLTK data
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('maxent_ne_chunker')
+nltk.download('words')
 
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
@@ -160,7 +165,7 @@ def analyze_phishing_links(email_content):
     urls = re.findall(r'https?://\S+', email_content)
     for url in urls:
         for keyword in phishing_keywords:
-            if keyword.lower() in url.lower():
+            if keyword.lower() in url.lower()):
                 phishing_links.append(url)
     return phishing_links
 
@@ -243,14 +248,12 @@ def visualize_conflict_detection(conflict_detection):
     st.pyplot(plt)
 
 def perform_ner(email_content):
-    nlp = spacy.load("en_core_web_sm")
-    doc = nlp(email_content)
-    return doc
+    blob = TextBlob(email_content)
+    return blob.tags, blob.noun_phrases, blob.parse()
 
 def perform_dependency_parsing(email_content):
-    nlp = spacy.load("en_core_web_sm")
-    doc = nlp(email_content)
-    return doc
+    blob = TextBlob(email_content)
+    return blob.parse()
 
 def infer_personality_traits(email_content):
     classifier = TextClassifier.load('en-sentiment')
@@ -319,7 +322,7 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
                     bias_detection = future_bias_detection.result() if future_bias_detection else None
                     conflict_detection = future_conflict_detection.result() if future_conflict_detection else None
                     argument_mining = future_argument_mining.result() if future_argument_mining else None
-                    ner = future_ner.result() if future_ner else None
+                    ner_tags, noun_phrases, dependency_tree = future_ner.result() if future_ner else (None, None, None)
                     dependency_parsing = future_dependency_parsing.result() if future_dependency_parsing else None
                     personality_traits = future_personality_traits.result() if future_personality_traits else None
 
@@ -396,15 +399,16 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
                     st.write(argument_mining)
                     visualize_argument_mining(argument_mining)
 
-                if ner:
+                if ner_tags or noun_phrases:
                     st.subheader("🔍 Named Entity Recognition (NER)")
-                    ner_html = displacy.render(ner, style="ent")
-                    st.write(ner_html, unsafe_allow_html=True)
+                    st.write("Tags:")
+                    st.write(ner_tags)
+                    st.write("Noun Phrases:")
+                    st.write(noun_phrases)
 
-                if dependency_parsing:
+                if dependency_tree:
                     st.subheader("🔗 Dependency Parsing")
-                    dep_html = displacy.render(dependency_parsing, style="dep", options={"compact": True, "distance": 100})
-                    st.write(dep_html, unsafe_allow_html=True)
+                    st.write(dependency_tree)
 
                 if personality_traits:
                     st.subheader("🧠 Inferred Personality Traits")
@@ -431,8 +435,9 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
                         "conflict_detection": conflict_detection,
                         "argument_mining": argument_mining,
                         "metadata": email_metadata,
-                        "ner": ner,
-                        "dependency_parsing": dependency_parsing,
+                        "ner_tags": ner_tags,
+                        "noun_phrases": noun_phrases,
+                        "dependency_tree": dependency_tree,
                         "personality_traits": personality_traits,
                     }
                     export_json = json.dumps(export_data, indent=4)
@@ -445,4 +450,4 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
         st.error(f"❌ Error: {e}")
 
 else:
-    st.info("✏️ Paste email content and click 'Generate Insights' to begin.") 
+    st.info("✏️ Paste email content and click 'Generate Insights' to begin.")
