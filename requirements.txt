@@ -1,1 +1,13 @@
-streamlit
+streamlit 
+google-generativeai
+langdetect 
+textblob
+fpdf
+docx2txt
+pypdf2 
+cryptography
+openpyxl
+pandas
+matplotlib
+seaborn
+spacy
