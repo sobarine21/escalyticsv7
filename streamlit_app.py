@@ -19,9 +19,6 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-from flair.models import TextClassifier, SequenceTagger
-from flair.data import Sentence
-import asyncio
 
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
@@ -50,7 +47,7 @@ features = {
     "response": True,
     "export": True,
     "tone": True,
-    "urgency": True,
+    "urgency": False,
     "task_extraction": True,
     "subject_recommendation": True,
     "category": True,
@@ -72,9 +69,6 @@ features = {
     "conflict_detection": True,
     "argument_mining": True,
     "metadata_extraction": True,
-    "ner": True,
-    "dependency_parsing": True,
-    "personality_traits": True,
 }
 
 st.sidebar.title("Feature Selection")
@@ -152,10 +146,7 @@ def get_ai_response(prompt, email_content):
         return ""
 
 def get_sentiment(email_content):
-    sentiment_model = TextClassifier.load('en-sentiment')
-    sentence = Sentence(email_content)
-    sentiment_model.predict(sentence)
-    return sentence.labels
+    return TextBlob(email_content).sentiment.polarity
 
 def get_readability(email_content):
     return round(TextBlob(email_content).sentiment.subjectivity * 10, 2)
@@ -170,7 +161,7 @@ def export_pdf(text):
 def analyze_phishing_links(email_content):
     phishing_keywords = ["login", "verify", "update account", "account suspended", "urgent action required", "click here"]
     phishing_links = []
-    urls = re.findall(r'https?://\S+', email_content)
+    urls = re.findall(r'(https?://\S+)', email_content)
     for url in urls:
         for keyword in phishing_keywords:
             if keyword.lower() in url.lower():
@@ -179,7 +170,7 @@ def analyze_phishing_links(email_content):
 
 def detect_sensitive_information(email_content):
     sensitive_info_patterns = {
-        "phone_number": r"(\+?\d{1,2}\s?)?(\(?\d{3}\)?|\d{3})[\s\-]?\d{3}[\s\-]?\d{4}",
+        "phone_number": r"(\+?\d{1,2}\s?)?(\(?\d{3}\)?|\d{3})[\s\-]?\d{3}[\\s\-]?\d{4}",
         "email_address": r"[\w\.-]+@[\w\.-]+\.\w+",
         "credit_card": r"\b(?:\d[ -]*?){13,16}\b"
     }
@@ -233,6 +224,12 @@ def extract_email_metadata(email_file):
     except Exception as e:
         return f"Error extracting metadata: {e}"
 
+def progress_bar(duration):
+    progress = st.progress(0)
+    for i in range(duration):
+        time.sleep(1)
+        progress.progress((i + 1) / duration)
+
 def visualize_argument_mining(argument_mining):
     arguments = argument_mining.split("\n")
     arguments = [arg for arg in arguments if arg.strip()]
@@ -255,24 +252,10 @@ def visualize_conflict_detection(conflict_detection):
     plt.ylabel("Conflicts")
     st.pyplot(plt)
 
-def perform_ner(email_content):
-    ner_model = SequenceTagger.load('ner')
-    sentence = Sentence(email_content)
-    ner_model.predict(sentence)
-    return sentence.to_dict(tag_type='ner')
-
-def perform_dependency_parsing(email_content):
-    blob = TextBlob(email_content)
-    return blob.parse()
-
-def infer_personality_traits(email_content):
-    classifier = TextClassifier.load('en-sentiment')
-    sentence = Sentence(email_content)
-    classifier.predict(sentence)
-    return sentence.labels
-
 if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 Generate Insights"):
     try:
+        progress_bar(5)
+
         if uploaded_email_file:
             msg = BytesParser(policy=policy.default).parsebytes(uploaded_email_file.getvalue())
             email_content = msg.get_body(preferencelist=('plain')).get_content()
@@ -314,10 +297,6 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
                     else:
                         email_metadata = None
 
-                    future_ner = executor.submit(perform_ner, email_content) if features["ner"] else None
-                    future_dependency_parsing = executor.submit(perform_dependency_parsing, email_content) if features["dependency_parsing"] else None
-                    future_personality_traits = executor.submit(infer_personality_traits, email_content) if features["personality_traits"] else None
-
                     summary = future_summary.result() if future_summary else None
                     response = future_response.result() if future_response else None
                     highlights = future_highlights.result() if future_highlights else None
@@ -332,9 +311,6 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
                     bias_detection = future_bias_detection.result() if future_bias_detection else None
                     conflict_detection = future_conflict_detection.result() if future_conflict_detection else None
                     argument_mining = future_argument_mining.result() if future_argument_mining else None
-                    ner_results = future_ner.result() if future_ner else None
-                    dependency_parsing = future_dependency_parsing.result() if future_dependency_parsing else None
-                    personality_traits = future_personality_traits.result() if future_personality_traits else None
 
                 if summary:
                     st.subheader("📌 Email Summary")
@@ -351,7 +327,8 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
                 if features["sentiment"]:
                     st.subheader("💬 Sentiment Analysis")
                     sentiment = get_sentiment(email_content)
-                    st.write(f"**Sentiment:** {sentiment}")
+                    sentiment_label = "Positive" if sentiment > 0 else "Negative" if sentiment < 0 else "Neutral"
+                    st.write(f"**Sentiment:** {sentiment_label} (Polarity: {sentiment:.2f})")
 
                 if tone:
                     st.subheader("🎭 Email Tone")
@@ -408,18 +385,6 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
                     st.write(argument_mining)
                     visualize_argument_mining(argument_mining)
 
-                if ner_results:
-                    st.subheader("🔍 Named Entity Recognition (NER)")
-                    st.json(ner_results)
-
-                if dependency_parsing:
-                    st.subheader("🔗 Dependency Parsing")
-                    st.write(dependency_parsing)
-
-                if personality_traits:
-                    st.subheader("🧠 Inferred Personality Traits")
-                    st.write(personality_traits)
-
                 if email_metadata:
                     st.subheader("📅 Email Metadata")
                     metadata_df = pd.DataFrame(list(email_metadata.items()), columns=["Field", "Value"])
@@ -441,9 +406,6 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
                         "conflict_detection": conflict_detection,
                         "argument_mining": argument_mining,
                         "metadata": email_metadata,
-                        "ner_results": ner_results,
-                        "dependency_parsing": dependency_parsing,
-                        "personality_traits": personality_traits,
                     }
                     export_json = json.dumps(export_data, indent=4)
                     st.download_button("📥 Download JSON", data=export_json, file_name="analysis.json", mime="application/json")
