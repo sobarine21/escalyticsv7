@@ -174,7 +174,7 @@ def detect_sensitive_information(email_content):
         "email_address": r"[\w\.-]+@[\w\.-]+\.\w+",
         "credit_card": r"\b(?:\d[ -]*?){13,16}\b"
     }
-    
+
     sensitive_data = {}
     for key, pattern in sensitive_info_patterns.items():
         matches = re.findall(pattern, email_content)
@@ -224,37 +224,31 @@ def extract_email_metadata(email_file):
     except Exception as e:
         return f"Error extracting metadata: {e}"
 
-def progress_bar(duration):
-    progress = st.progress(0)
-    for i in range(duration):
-        time.sleep(1)
-        progress.progress((i + 1) / duration)
+def countdown_timer(duration):
+    with st.spinner("Processing..."):
+        for i in range(duration, 0, -1):
+            st.write(f"⏳ {i} seconds remaining...")
+            time.sleep(1)
 
 def visualize_argument_mining(argument_mining):
     arguments = argument_mining.split("\n")
     arguments = [arg for arg in arguments if arg.strip()]
     data = pd.DataFrame({"Argument": arguments})
-    plt.figure(figsize=(10, 6))
-    sns.countplot(y="Argument", data=data, palette="viridis")
-    plt.title("Argument Mining Results")
-    plt.xlabel("Count")
-    plt.ylabel("Arguments")
-    st.pyplot(plt)
+    st.bar_chart(data["Argument"].value_counts())
 
 def visualize_conflict_detection(conflict_detection):
     conflicts = conflict_detection.split("\n")
     conflicts = [conflict for conflict in conflicts if conflict.strip()]
     data = pd.DataFrame({"Conflict": conflicts})
-    plt.figure(figsize=(10, 6))
-    sns.countplot(y="Conflict", data=data, palette="Reds")
-    plt.title("Conflict Detection Results")
-    plt.xlabel("Count")
-    plt.ylabel("Conflicts")
-    st.pyplot(plt)
+    st.bar_chart(data["Conflict"].value_counts())
+
+def visualize_metrics(metrics, title, xlabel, ylabel, palette):
+    data = pd.DataFrame(metrics.items(), columns=[xlabel, ylabel])
+    st.bar_chart(data.set_index(xlabel))
 
 if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 Generate Insights"):
     try:
-        progress_bar(5)
+        countdown_timer(5)
 
         if uploaded_email_file:
             msg = BytesParser(policy=policy.default).parsebytes(uploaded_email_file.getvalue())
@@ -315,65 +309,80 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
                 if summary:
                     st.subheader("📌 Email Summary")
                     st.write(summary)
+                    visualize_metrics({"Summary Length": len(summary)}, "Summary Metrics", "Metric", "Value", "Blues")
 
                 if response:
                     st.subheader("✉️ Suggested Response")
                     st.write(response)
+                    visualize_metrics({"Response Length": len(response)}, "Response Metrics", "Metric", "Value", "Greens")
 
                 if highlights:
                     st.subheader("🔑 Key Highlights")
                     st.write(highlights)
+                    visualize_metrics({"Highlights Length": len(highlights)}, "Highlights Metrics", "Metric", "Value", "Purples")
 
                 if features["sentiment"]:
                     st.subheader("💬 Sentiment Analysis")
                     sentiment = get_sentiment(email_content)
                     sentiment_label = "Positive" if sentiment > 0 else "Negative" if sentiment < 0 else "Neutral"
                     st.write(f"**Sentiment:** {sentiment_label} (Polarity: {sentiment:.2f})")
+                    visualize_metrics({"Sentiment Polarity": sentiment}, "Sentiment Metrics", "Metric", "Value", "Oranges")
 
                 if tone:
                     st.subheader("🎭 Email Tone")
                     st.write(tone)
+                    visualize_metrics({"Tone Length": len(tone)}, "Tone Metrics", "Metric", "Value", "Reds")
 
                 if tasks:
                     st.subheader("📝 Actionable Tasks")
                     st.write(tasks)
+                    visualize_metrics({"Tasks Length": len(tasks)}, "Tasks Metrics", "Metric", "Value", "Greens")
 
                 if subject_recommendation:
                     st.subheader("📬 Subject Line Recommendation")
                     st.write(subject_recommendation)
+                    visualize_metrics({"Subject Length": len(subject_recommendation)}, "Subject Metrics", "Metric", "Value", "Blues")
 
                 if clarity_score:
                     st.subheader("🔍 Email Clarity Score")
                     st.write(clarity_score)
+                    visualize_metrics({"Clarity Score": clarity_score}, "Clarity Metrics", "Metric", "Value", "Purples")
 
                 if complexity_reduction:
                     st.subheader("🔽 Simplified Explanation")
                     st.write(complexity_reduction)
+                    visualize_metrics({"Complexity Reduction Length": len(complexity_reduction)}, "Complexity Metrics", "Metric", "Value", "Oranges")
 
                 if scenario_response:
                     st.subheader("📜 Scenario-Based Suggested Response")
                     st.write(f"**{selected_scenario}:**")
                     st.write(scenario_response)
+                    visualize_metrics({"Scenario Response Length": len(scenario_response)}, "Scenario Metrics", "Metric", "Value", "Reds")
 
                 if attachment_analysis:
                     st.subheader("📎 Attachment Analysis")
                     st.write(attachment_analysis)
+                    visualize_metrics({"Attachment Analysis Length": len(attachment_analysis)}, "Attachment Metrics", "Metric", "Value", "Greens")
 
                 if phishing_links:
                     st.subheader("⚠️ Phishing Links Detected")
                     st.write(phishing_links)
+                    visualize_metrics({"Number of Phishing Links": len(phishing_links)}, "Phishing Metrics", "Metric", "Value", "Reds")
 
                 if sensitive_info:
                     st.subheader("⚠️ Sensitive Information Detected")
                     st.json(sensitive_info)
+                    visualize_metrics({"Number of Sensitive Info Types": len(sensitive_info)}, "Sensitive Info Metrics", "Metric", "Value", "Blues")
 
                 if confidentiality:
                     st.subheader("🔐 Confidentiality Rating")
                     st.write(f"Confidentiality Rating: {confidentiality}/5")
+                    visualize_metrics({"Confidentiality Rating": confidentiality}, "Confidentiality Metrics", "Metric", "Value", "Purples")
 
                 if bias_detection:
                     st.subheader("⚖️ Bias Detection")
                     st.write(bias_detection)
+                    visualize_metrics({"Bias Detection Length": len(bias_detection)}, "Bias Metrics", "Metric", "Value", "Oranges")
 
                 if conflict_detection:
                     st.subheader("🚨 Conflict Detection")
@@ -389,6 +398,7 @@ if (email_content or uploaded_file or uploaded_email_file) and st.button("🔍 G
                     st.subheader("📅 Email Metadata")
                     metadata_df = pd.DataFrame(list(email_metadata.items()), columns=["Field", "Value"])
                     st.table(metadata_df)
+                    visualize_metrics({"Number of Metadata Fields": len(email_metadata)}, "Metadata Metrics", "Metric", "Value", "Reds")
 
                 if features["export"]:
                     export_data = {
